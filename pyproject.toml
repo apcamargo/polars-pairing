@@ -1,0 +1,29 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0", "polars>=0.20.6"]
+build-backend = "maturin"
+
+[project]
+name = "polars-pairing"
+description = "Polars plugin with pairing functions for nonnegative integers"
+authors = [
+    { name = "Antonio Camargo", email = "antoniop.camargo@gmail.com" },
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+[project.urls]
+Homepage = "https://apcamargo.github.io/polars-pairing"
+Repository = "https://github.com/apcamargo/polars-pairing"
+
+[tool.maturin]
+module-name = "polars_pairing._internal"
+
+[[tool.mypy.overrides]]
+module = "polars.utils.udfs"
+ignore_missing_imports = true
