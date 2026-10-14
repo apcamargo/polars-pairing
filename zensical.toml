@@ -4,8 +4,8 @@ site_url = "https://apcamargo.github.io/polars-pairing"
 repo_url = "https://github.com/apcamargo/polars-pairing"
 repo_name = "apcamargo/polars-pairing"
 nav = [
-  { Home = "index.md" },
-  { Reference = "reference.md" },
+  { "Home" = "index.md" },
+  { "API reference" = "reference.md" },
 ]
 extra_css = ["stylesheets/extra.css"]
 
@@ -72,11 +72,22 @@ pygments_lang_class = true
 [project.markdown_extensions.pymdownx.superfences]
 
 [project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
 paths = ["."]
 
 [project.plugins.mkdocstrings.handlers.python.options]
 docstring_style = "numpy"
+filters = ["!^_"]
+force_inspection = true
+inherited_members = true
+modernize_annotations = true
+parameter_headings = false
+separate_signature = true
+show_bases = false
+show_category_heading = true
 show_root_heading = true
-show_source = true
+show_signature_annotations = true
+show_source = false
 show_symbol_type_heading = true
 show_symbol_type_toc = true
+signature_crossrefs = true
