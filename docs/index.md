@@ -2,7 +2,7 @@
 
 ## About `polars-pairing`
 
-`polars-pairing` is a plugin provides pairing functions to [Polars](https://github.com/pola-rs/polars). These functions encode a pair of natural numbers into a single natural number.
+`polars-pairing` is a plugin that provides pairing functions to [Polars](https://github.com/pola-rs/polars). These functions encode a pair of natural numbers into a single natural number.
 
 <figure markdown="span">
   ![Image title](images/hagen_pairing_light.svg#only-light)
@@ -10,7 +10,7 @@
   <figcaption>A pairing function performs a one-to-one mapping between <code>(x, y)</code> and <code>i</code> (represented by the circles in the Cartesian coordinate system). Figure by <a href="https://drhagen.com/blog/superior-pairing-function/">David Hagen</a>.</figcaption>
 </figure>
 
-This plugin implements six pairing functions (Hagen[^1], Szudzik[^2], Cantor[^3], Peter[^4], Rosenberg-Strong[^5], and Thotakura[^6]), along with their corresponding unpairing functions, as Polars expressions. The pairing functions take two integer columns as input and produce a single column containing the encoded pair. Conversely, the unpairing functions accept a single column as input and generate a struct column containing the values of the original pair.
+This plugin implements six pairing functions (Hagen[^1], Szudzik[^2], Cantor[^3], Peter[^4], Rosenberg-Strong[^5], and Thotakura[^6]), along with their corresponding unpairing functions, as Polars expressions. The pairing functions take two nonnegative integer columns as input and produce a single column containing the encoded pair. Conversely, the unpairing functions accept a single column as input and generate a struct column containing the values of the original pair.
 
 ## Installation
 

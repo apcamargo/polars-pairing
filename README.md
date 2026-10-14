@@ -10,7 +10,7 @@ pip install polars-pairing
 
 ## Functionality and usage
 
-This plugin implements six pairing functions (Hagen[^1], Szudzik[^2], Cantor[^3], Peter[^4], Rosenberg-Strong[^5], and Thotakura[^6]), along with their corresponding unpairing functions, as Polars expressions. The pairing functions take two integer columns as input and produce a single column containing the encoded pair. Conversely, the unpairing functions accept a single column as input and generate a struct column containing the values of the original pair.
+This plugin implements six pairing functions (Hagen[^1], Szudzik[^2], Cantor[^3], Peter[^4], Rosenberg-Strong[^5], and Thotakura[^6]), along with their corresponding unpairing functions, as Polars expressions. The pairing functions take two nonnegative integer columns as input and produce a single column containing the encoded pair. Conversely, the unpairing functions accept a single column as input and generate a struct column containing the values of the original pair.
 
 ```python
 >>> import polars as pl

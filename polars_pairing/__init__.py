@@ -34,7 +34,7 @@ class PairingFunctions:
         ----------
         method
             The method to use for pairing. Either "hagen", "szudzik", "cantor",
-            "peter", "rosenberg_strong" or "thotakura", defaults to "hagen".
+            "peter", "rosenberg_strong" or "thotakura". Defaults to "hagen".
 
         Raises
         ------
@@ -106,7 +106,7 @@ class PairingFunctions:
         ----------
         method
             The method to use for unpairing. Either "hagen", "szudzik", "cantor",
-            "peter", "rosenberg_strong" or "thotakura", defaults to "hagen".
+            "peter", "rosenberg_strong" or "thotakura". Defaults to "hagen".
 
         Raises
         ------
