@@ -1,28 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 import polars as pl
 
 from polars_pairing._internal import __version__ as __version__
-from polars_pairing.utils import parse_version, register_plugin
 
 if TYPE_CHECKING:
-    try:
-        from polars._typing import IntoExpr, PolarsDataType  # type: ignore [no-redef]
-    except ImportError:
-        from polars.type_aliases import (  # type: ignore [no-redef]
-            IntoExpr,
-            PolarsDataType,
-        )
+    from polars._typing import IntoExpr, PolarsDataType
 
-if parse_version(pl.__version__) < parse_version("0.20.16"):
-    from polars.utils.udfs import _get_shared_lib_location
-
-    lib: str | Path = _get_shared_lib_location(__file__)
-else:
-    lib = Path(__file__).parent
+lib = Path(__file__).parent
 
 
 @pl.api.register_expr_namespace("pairing")
@@ -76,12 +65,12 @@ class PairingFunctions:
         │ 115349101 │
         └───────────┘
         """
-        return register_plugin(
+        return pl.plugins.register_plugin_function(
             args=[self._expr, other],
             kwargs={"method": method},
-            symbol="pair",
+            function_name="pair",
             is_elementwise=True,
-            lib=lib,
+            plugin_path=lib,
         )
 
     def unpair(
@@ -125,12 +114,12 @@ class PairingFunctions:
         │ {1026,4344} │
         └─────────────┘
         """
-        return register_plugin(
+        return pl.plugins.register_plugin_function(
             args=[self._expr],
             kwargs={"method": method},
-            symbol="unpair",
+            function_name="unpair",
             is_elementwise=True,
-            lib=lib,
+            plugin_path=lib,
         )
 
 

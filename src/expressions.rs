@@ -10,9 +10,12 @@ struct PairingKwargs {
 }
 
 fn pair_struct(_input_field: &[Field]) -> PolarsResult<Field> {
-    let left = Field::new("Left", DataType::UInt64);
-    let right = Field::new("Right", DataType::UInt64);
-    Ok(Field::new("Pair", DataType::Struct(vec![left, right])))
+    let left = Field::new("Left".into(), DataType::UInt64);
+    let right = Field::new("Right".into(), DataType::UInt64);
+    Ok(Field::new(
+        "Pair".into(),
+        DataType::Struct(vec![left, right]),
+    ))
 }
 
 #[polars_expr(output_type=UInt64)]
@@ -76,7 +79,7 @@ fn unpair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
     // If the method is "szudzik", use the Szudzik unpairing function,
     // otherwise use the Cantor unpairing function
     let unpaired: Vec<Option<(u64, u64)>> = paired
-        .into_iter()
+        .iter()
         .map(|n| match method {
             "hagen" => n.and_then(compute_hagen_unpair),
             "szudzik" => n.and_then(compute_szudzik_unpair),
@@ -88,16 +91,16 @@ fn unpair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
     let left: Vec<Option<u64>> = unpaired.iter().map(|p| p.map(|(l, _)| l)).collect();
     let right: Vec<Option<u64>> = unpaired.iter().map(|p| p.map(|(_, r)| r)).collect();
     // Create a StructChunked from the left and right vectors
-    let out = StructChunked::new(
-        "Pair",
-        &[
-            UInt64Chunked::from_iter(left)
-                .with_name("Left")
-                .into_series(),
-            UInt64Chunked::from_iter(right)
-                .with_name("Right")
-                .into_series(),
-        ],
+    let left_series = UInt64Chunked::from_iter(left)
+        .with_name("Left".into())
+        .into_series();
+    let right_series = UInt64Chunked::from_iter(right)
+        .with_name("Right".into())
+        .into_series();
+    let out = StructChunked::from_series(
+        "Pair".into(),
+        left_series.len(),
+        [&left_series, &right_series].into_iter(),
     )?;
     // Return the result as a Series wrapped in Ok
     Ok(out.into_series())

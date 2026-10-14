@@ -1,4 +1,4 @@
-polars
+polars>=2.0,<3
 maturin
 ruff
 pytest
