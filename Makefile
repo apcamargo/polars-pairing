@@ -19,4 +19,4 @@ pre-commit: .venv  ## Run formatters and linters
 	.venv/bin/mypy polars_pairing tests
 
 test: .venv  ## Run the test suite
-	.venv/bin/python -m pytest tests
+	.venv/bin/python -m pytest tests --doctest-modules polars_pairing

@@ -28,7 +28,7 @@ class PairingFunctions:
     ) -> pl.Expr:
         """
         Applies a pairing function to uniquely encode two nonnegative integers
-        into a single nonnegative integer.
+        into a single nonnegative integer. Null inputs give null outputs.
 
         Parameters
         ----------
@@ -36,38 +36,55 @@ class PairingFunctions:
             The method to use for pairing. Either "hagen", "szudzik", "cantor",
             "peter", "rosenberg_strong" or "thotakura", defaults to "hagen".
 
+        Raises
+        ------
+        pl.exceptions.ComputeError
+            If `method` is not a supported name, either input is neither an
+            integer nor all-null, either input is negative or larger than the
+            maximum UInt64 value, the encoded pair does not fit in a UInt64, or
+            the two inputs have different lengths and neither has length 1.
+
         Examples
         --------
         >>> df = pl.DataFrame(
         ...     {
-        ...         "n1": [2, 2, 3, 1501],
-        ...         "n2": [-6, 7, 8, 10740],
+        ...         "n1": [2, 2, 3, 1501, None],
+        ...         "n2": [6, 7, 8, 10740, 11],
         ...     }
         ... )
         >>> df.select(pl.col("n1").pairing.pair(pl.col("n2")).alias("pair"))
-        shape: (4, 1)
+        shape: (5, 1)
         ┌───────────┐
         │ pair      │
         │ ---       │
         │ u64       │
         ╞═══════════╡
-        │ null      │
+        │ 40        │
         │ 54        │
         │ 70        │
         │ 115350602 │
-        └───────────┘
-        >>> df.select(pl.col("n1").pairing.pair(pl.col("n2"), method="szudzik").alias("pair"))
-        shape: (4, 1)
-        ┌───────────┐
-        │ pair      │
-        │ ---       │
-        │ u64       │
-        ╞═══════════╡
         │ null      │
-        │ 51        │
-        │ 67        │
-        │ 115349101 │
         └───────────┘
+        >>> df.select(
+        ...     pl.col("n1").pairing.pair(pl.col("n2"), method="hagen").alias("hagen"),
+        ...     pl.col("n1").pairing.pair(pl.col("n2"), method="szudzik").alias("szudzik"),
+        ...     pl.col("n1").pairing.pair(pl.col("n2"), method="cantor").alias("cantor"),
+        ...     pl.col("n1").pairing.pair(pl.col("n2"), method="peter").alias("peter"),
+        ...     pl.col("n1").pairing.pair(pl.col("n2"), method="rosenberg_strong").alias("rosenberg_strong"),
+        ...     pl.col("n1").pairing.pair(pl.col("n2"), method="thotakura").alias("thotakura"),
+        ... )
+        shape: (5, 6)
+        ┌───────────┬───────────┬──────────┬───────────┬──────────────────┬───────────┐
+        │ hagen     ┆ szudzik   ┆ cantor   ┆ peter     ┆ rosenberg_strong ┆ thotakura │
+        │ ---       ┆ ---       ┆ ---      ┆ ---       ┆ ---              ┆ ---       │
+        │ u64       ┆ u64       ┆ u64      ┆ u64       ┆ u64              ┆ u64       │
+        ╞═══════════╪═══════════╪══════════╪═══════════╪══════════════════╪═══════════╡
+        │ 40        ┆ 38        ┆ 42       ┆ 41        ┆ 38               ┆ 34        │
+        │ 54        ┆ 51        ┆ 52       ┆ 54        ┆ 51               ┆ 42        │
+        │ 70        ┆ 67        ┆ 74       ┆ 71        ┆ 67               ┆ 54        │
+        │ 115350602 ┆ 115349101 ┆ 74937901 ┆ 115350603 ┆ 115349101        ┆ 57698282  │
+        │ null      ┆ null      ┆ null     ┆ null      ┆ null             ┆ null      │
+        └───────────┴───────────┴──────────┴───────────┴──────────────────┴───────────┘
         """
         return pl.plugins.register_plugin_function(
             args=[self._expr, other],
@@ -83,7 +100,7 @@ class PairingFunctions:
     ) -> pl.Expr:
         """
         Applies an unpairing function to uniquely decode a nonnegative integer
-        into two nonnegative integers.
+        into two nonnegative integers. Null inputs give null outputs.
 
         Parameters
         ----------
@@ -91,9 +108,16 @@ class PairingFunctions:
             The method to use for unpairing. Either "hagen", "szudzik", "cantor",
             "peter", "rosenberg_strong" or "thotakura", defaults to "hagen".
 
+        Raises
+        ------
+        pl.exceptions.ComputeError
+            If `method` is not a supported name, the input is neither an
+            integer nor all-null, or the input is negative or larger than the
+            maximum UInt64 value.
+
         Examples
         --------
-        >>> df = pl.DataFrame({"pair": [None, 607, -4, 18871362]})
+        >>> df = pl.DataFrame({"pair": [None, 607, 4, 18871362]})
         >>> df.select(pl.col("pair").pairing.unpair().alias("unpair"))
         shape: (4, 1)
         ┌─────────────┐
@@ -103,7 +127,7 @@ class PairingFunctions:
         ╞═════════════╡
         │ {null,null} │
         │ {24,15}     │
-        │ {null,null} │
+        │ {0,2}       │
         │ {513,4344}  │
         └─────────────┘
         >>> df.select(pl.col("pair").pairing.unpair(method="szudzik").alias("unpair"))
@@ -115,7 +139,7 @@ class PairingFunctions:
         ╞═════════════╡
         │ {null,null} │
         │ {24,7}      │
-        │ {null,null} │
+        │ {0,2}       │
         │ {1026,4344} │
         └─────────────┘
         """

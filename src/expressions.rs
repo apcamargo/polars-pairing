@@ -91,6 +91,24 @@ fn unpair_one(method: Method, p: u64) -> PolarsResult<(u64, u64)> {
     })
 }
 
+/// Index of the first row where `orig` holds a value that the non-strict cast
+/// to `cast` turned into null. Genuine nulls in `orig` are skipped. The
+/// null-count comparison keeps the common (no failure) path cheap.
+fn first_unconvertible(orig: &Series, cast: &Series) -> Option<usize> {
+    if cast.null_count() == orig.null_count() {
+        return None;
+    }
+    orig.iter()
+        .zip(cast.iter())
+        .position(|(o, c)| !o.is_null() && c.is_null())
+}
+
+/// Integer inputs are paired; an all-null (Null dtype) input such as
+/// `pl.lit(None)` is accepted too and simply yields nulls.
+fn is_accepted(dtype: &DataType) -> bool {
+    dtype.is_integer() || dtype.is_null()
+}
+
 fn pair_struct(_input_field: &[Field]) -> PolarsResult<Field> {
     let left = Field::new("Left".into(), DataType::UInt64);
     let right = Field::new("Right".into(), DataType::UInt64);
@@ -104,21 +122,54 @@ fn pair_struct(_input_field: &[Field]) -> PolarsResult<Field> {
 fn pair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
     // Resolve the method up front so invalid names fail even on empty input
     let method = Method::parse(&kwargs.method, "pairing")?;
-    // Ensure both inputs are of integer type, otherwise return an error
-    if !inputs[0].dtype().is_integer() || !inputs[1].dtype().is_integer() {
+    // Ensure both inputs are integers (or all-null), otherwise return an error
+    if !is_accepted(inputs[0].dtype()) || !is_accepted(inputs[1].dtype()) {
         polars_bail!(InvalidOperation: "The pairing function can only be used on integers.");
     }
-    // Cast the first and second input series to UInt64, unwrapping the result directly
-    let left_series = inputs[0].cast(&DataType::UInt64).unwrap();
-    let right_series = inputs[1].cast(&DataType::UInt64).unwrap();
+    // A length-1 input (scalar or literal) is broadcast against the other
+    // side below; any other length mismatch is an error.
+    let len = match (inputs[0].len(), inputs[1].len()) {
+        (1, r) => r,
+        (l, r) if l == r || r == 1 => l,
+        (l, r) => polars_bail!(
+            ShapeMismatch: "cannot evaluate two Series of different lengths ({} and {})", l, r
+        ),
+    };
+    // Non-strict cast: negatives and values beyond u64::MAX become null, and
+    // are reported as errors below. Genuine nulls stay null.
+    let left_series = inputs[0].cast(&DataType::UInt64)?;
+    let right_series = inputs[1].cast(&DataType::UInt64)?;
+    let bad_row = [
+        first_unconvertible(&inputs[0], &left_series),
+        first_unconvertible(&inputs[1], &right_series),
+    ]
+    .into_iter()
+    .flatten()
+    .min();
+    // With no output rows, an out-of-range broadcast value is never paired,
+    // so there is nothing to report.
+    if let Some(row) = bad_row.filter(|_| len > 0) {
+        // A length-1 input is broadcast, so its only value sits at index 0.
+        fn at(s: &Series, row: usize) -> PolarsResult<AnyValue<'_>> {
+            s.get(if s.len() == 1 { 0 } else { row })
+        }
+        polars_bail!(
+            InvalidOperation: "pairing input out of range for method '{}' with inputs ({}, {})",
+            method.name(),
+            at(&inputs[0], row)?,
+            at(&inputs[1], row)?
+        );
+    }
     // Convert the series to their unsigned 64-bit integer chunked arrays
     let left = left_series.u64()?;
     let right = right_series.u64()?;
-    // Nulls propagate without invoking the function; overflow raises an error
-    let out: UInt64Chunked = arity::try_binary_elementwise(left, right, |l, r| match (l, r) {
-        (Some(l), Some(r)) => pair_one(method, l, r).map(Some),
-        _ => Ok(None),
-    })?;
+    // Nulls propagate without invoking the function; overflow raises an error.
+    // A length-1 side is applied as a scalar rather than materialized.
+    let out: UInt64Chunked =
+        arity::broadcast_try_binary_elementwise(left, right, |l, r| match (l, r) {
+            (Some(l), Some(r)) => pair_one(method, l, r).map(Some),
+            _ => Ok(None),
+        })?;
     // Return the result as a Series wrapped in Ok
     Ok(out.into_series())
 }
@@ -127,32 +178,43 @@ fn pair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
 fn unpair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
     // Resolve the method up front so invalid names fail even on empty input
     let method = Method::parse(&kwargs.method, "unpairing")?;
-    // Ensure the input is an integer, otherwise return an error
-    if !inputs[0].dtype().is_integer() {
+    // Ensure the input is an integer (or all-null), otherwise return an error
+    if !is_accepted(inputs[0].dtype()) {
         polars_bail!(InvalidOperation: "The unpairing function can only be used on integers.");
     }
-    // Cast the input series to UInt64, unwrapping the result directly
-    let paired_series = inputs[0].cast(&DataType::UInt64).unwrap();
+    // Non-strict cast: negatives and values beyond u64::MAX become null, and
+    // are reported as errors. Genuine nulls stay null.
+    let paired_series = inputs[0].cast(&DataType::UInt64)?;
+    if let Some(row) = first_unconvertible(&inputs[0], &paired_series) {
+        polars_bail!(
+            InvalidOperation: "unpairing input out of range for method '{}' with input ({})",
+            method.name(),
+            inputs[0].get(row)?
+        );
+    }
     // Convert the series to their 64-bit integer chunked arrays
     let paired = paired_series.u64()?;
-    // Apply the unpairing function element-wise to paired
-    let unpaired: Vec<Option<(u64, u64)>> = paired
-        .iter()
-        .map(|n| n.map(|p| unpair_one(method, p)).transpose())
-        .collect::<PolarsResult<_>>()?;
-    // Create an iterator that takes the left value of the pair if it exists or 0 otherwise
-    let left: Vec<Option<u64>> = unpaired.iter().map(|p| p.map(|(l, _)| l)).collect();
-    let right: Vec<Option<u64>> = unpaired.iter().map(|p| p.map(|(_, r)| r)).collect();
-    // Create a StructChunked from the left and right vectors
-    let left_series = UInt64Chunked::from_iter(left)
-        .with_name("Left".into())
-        .into_series();
-    let right_series = UInt64Chunked::from_iter(right)
-        .with_name("Right".into())
-        .into_series();
+    let mut left = PrimitiveChunkedBuilder::<UInt64Type>::new("Left".into(), paired.len());
+    let mut right = PrimitiveChunkedBuilder::<UInt64Type>::new("Right".into(), paired.len());
+    for n in paired.iter() {
+        match n {
+            None => {
+                left.append_null();
+                right.append_null();
+            }
+            Some(p) => {
+                let (l, r) = unpair_one(method, p)?;
+                left.append_value(l);
+                right.append_value(r);
+            }
+        }
+    }
+    // Create a StructChunked from the left and right columns
+    let left_series = left.finish().into_series();
+    let right_series = right.finish().into_series();
     let out = StructChunked::from_series(
         "Pair".into(),
-        left_series.len(),
+        paired.len(),
         [&left_series, &right_series].into_iter(),
     )?;
     // Return the result as a Series wrapped in Ok

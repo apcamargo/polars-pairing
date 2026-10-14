@@ -11,7 +11,16 @@ crate-type = ["cdylib"]
 pyo3 = { version = "0.29.3", features = ["extension-module", "abi3-py311"] }
 pyo3-polars = { version = "0.28.0", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
-polars = { version = "0.55.2", default-features = false, features = ["dtype-struct"] }
+polars = { version = "0.55.2", default-features = false, features = [
+    "dtype-struct",
+    "dtype-i8",
+    "dtype-i16",
+    "dtype-u8",
+    "dtype-u16",
+    "dtype-i128",
+    "dtype-u128",
+    "dtype-decimal",
+] }
 pairing-functions = "0.2.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
