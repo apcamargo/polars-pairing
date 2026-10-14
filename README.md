@@ -4,8 +4,19 @@ This plugin provides pairing functions to Polars. These functions encode a pair 
 
 ## Installation
 
-```bash
+Using `pip`:
+
+```sh
 pip install polars-pairing
+```
+
+Using [`pixi`](https://pixi.sh/):
+
+```sh
+# Create a new Pixi workspace and navigate into the workspace directory
+pixi init my_workspace && cd my_workspace
+# Add polars-pairing to your Pixi workspace
+pixi add polars-pairing
 ```
 
 ## Functionality and usage

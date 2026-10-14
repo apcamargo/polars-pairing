@@ -14,15 +14,57 @@ This plugin implements six pairing functions (Hagen[^1], Szudzik[^2], Cantor[^3]
 
 ## Installation
 
-`polars-pairing` can be installed via Python's `pip`:
+`polars-pairing` can be installed from PyPI with `pip` or [`uv`](https://docs.astral.sh/uv/), or from Bioconda with [`pixi`](https://pixi.sh/), [`conda`](https://docs.conda.io/projects/conda/), or [`mamba`](https://mamba.readthedocs.io/en/latest/).
 
-```bash
-pip install polars-pairing
-```
+=== "pip"
+
+    ```sh
+    pip install polars-pairing
+    ```
+
+=== "uv"
+
+    ```sh
+    uv init my_project && cd my_project # (1)!
+    uv add polars-pairing # (2)!
+    ```
+
+    1. Create a new Python project with `uv` and navigate into the project directory.
+    2. Add `polars-pairing` as a dependency to your project.
+
+=== "Pixi"
+
+    ```sh
+    pixi init my_workspace && cd my_workspace # (1)!
+    pixi add polars-pairing # (2)!
+    ```
+
+    1. Create a new Pixi workspace and navigate into the workspace directory.
+    2. Add `polars-pairing` to your Pixi workspace.
+
+=== "Conda"
+
+    ```sh
+    conda create -n my_environment -c conda-forge polars-pairing # (1)!
+    conda activate my_environment # (2)!
+    ```
+
+    1. Create a new Conda environment with `polars-pairing`.
+    2. Activate the environment.
+
+=== "Mamba"
+
+    ```sh
+    mamba create -n my_environment -c conda-forge polars-pairing # (1)!
+    mamba activate my_environment # (2)!
+    ```
+
+    1. Create a new Mamba environment with `polars-pairing`.
+    2. Activate the environment.
 
 ## Example
 
-```python
+```pycon
 >>> import polars as pl
 >>> import polars_pairing as plp
 
