@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 lib = Path(__file__).parent
 
+Method = Literal["hagen", "szudzik", "cantor", "peter", "rosenberg_strong", "thotakura"]
+
 
 @pl.api.register_expr_namespace("pairing")
 class PairingFunctions:
@@ -20,7 +22,9 @@ class PairingFunctions:
         self._expr = expr
 
     def pair(
-        self, other: IntoExpr, method: Literal["hagen", "szudzik", "cantor"] = "hagen"
+        self,
+        other: IntoExpr,
+        method: Method = "hagen",
     ) -> pl.Expr:
         """
         Applies a pairing function to uniquely encode two nonnegative integers
@@ -29,8 +33,8 @@ class PairingFunctions:
         Parameters
         ----------
         method
-            The method to use for pairing. Either "hagen", "szudzik" or "cantor",
-            defaults to "hagen".
+            The method to use for pairing. Either "hagen", "szudzik", "cantor",
+            "peter", "rosenberg_strong" or "thotakura", defaults to "hagen".
 
         Examples
         --------
@@ -74,7 +78,8 @@ class PairingFunctions:
         )
 
     def unpair(
-        self, method: Literal["hagen", "szudzik", "cantor"] = "hagen"
+        self,
+        method: Method = "hagen",
     ) -> pl.Expr:
         """
         Applies an unpairing function to uniquely decode a nonnegative integer
@@ -83,8 +88,8 @@ class PairingFunctions:
         Parameters
         ----------
         method
-            The method to use for unpairing. Either "hagen", "szudzik" or "cantor",
-            defaults to "hagen".
+            The method to use for unpairing. Either "hagen", "szudzik", "cantor",
+            "peter", "rosenberg_strong" or "thotakura", defaults to "hagen".
 
         Examples
         --------

@@ -1,5 +1,10 @@
 #![allow(clippy::unused_unit)]
-use crate::pairing::*;
+use pairing_functions::{
+    compute_cantor_pair, compute_cantor_unpair, compute_hagen_pair, compute_hagen_unpair,
+    compute_peter_pair, compute_peter_unpair, compute_rosenberg_strong_pair,
+    compute_rosenberg_strong_unpair, compute_szudzik_pair, compute_szudzik_unpair,
+    compute_thotakura_pair, compute_thotakura_unpair,
+};
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
@@ -7,6 +12,83 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 struct PairingKwargs {
     method: String,
+}
+
+#[derive(Copy, Clone)]
+enum Method {
+    Hagen,
+    Szudzik,
+    Cantor,
+    Peter,
+    RosenbergStrong,
+    Thotakura,
+}
+
+impl Method {
+    /// Resolve a method name (case-insensitive) to a `Method`, failing with
+    /// the user-supplied name if it is not recognized.
+    fn parse(method: &str, operation: &str) -> PolarsResult<Self> {
+        match method.to_ascii_lowercase().as_str() {
+            "hagen" => Ok(Self::Hagen),
+            "szudzik" => Ok(Self::Szudzik),
+            "cantor" => Ok(Self::Cantor),
+            "peter" => Ok(Self::Peter),
+            "rosenberg_strong" => Ok(Self::RosenbergStrong),
+            "thotakura" => Ok(Self::Thotakura),
+            _ => polars_bail!(InvalidOperation: "Invalid {} method: {}", operation, method),
+        }
+    }
+
+    /// Canonical (lowercase) name, for use in error messages.
+    fn name(self) -> &'static str {
+        match self {
+            Self::Hagen => "hagen",
+            Self::Szudzik => "szudzik",
+            Self::Cantor => "cantor",
+            Self::Peter => "peter",
+            Self::RosenbergStrong => "rosenberg_strong",
+            Self::Thotakura => "thotakura",
+        }
+    }
+}
+
+/// Pair two values with the given method, mapping overflow into a
+/// `PolarsError` with method and inputs for context.
+fn pair_one(method: Method, l: u64, r: u64) -> PolarsResult<u64> {
+    let result = match method {
+        Method::Hagen => compute_hagen_pair(l, r),
+        Method::Szudzik => compute_szudzik_pair(l, r),
+        Method::Cantor => compute_cantor_pair(l, r),
+        Method::Peter => compute_peter_pair(l, r),
+        Method::RosenbergStrong => compute_rosenberg_strong_pair(l, r),
+        Method::Thotakura => compute_thotakura_pair(l, r),
+    };
+    result.map_err(|_| {
+        polars_err!(
+            InvalidOperation: "pairing overflow for method '{}' with inputs ({}, {})",
+            method.name(),
+            l,
+            r
+        )
+    })
+}
+
+fn unpair_one(method: Method, p: u64) -> PolarsResult<(u64, u64)> {
+    let result = match method {
+        Method::Hagen => compute_hagen_unpair(p),
+        Method::Szudzik => compute_szudzik_unpair(p),
+        Method::Cantor => compute_cantor_unpair(p),
+        Method::Peter => compute_peter_unpair(p),
+        Method::RosenbergStrong => compute_rosenberg_strong_unpair(p),
+        Method::Thotakura => compute_thotakura_unpair(p),
+    };
+    result.map_err(|_| {
+        polars_err!(
+            InvalidOperation: "unpairing failure for method '{}' with input ({})",
+            method.name(),
+            p
+        )
+    })
 }
 
 fn pair_struct(_input_field: &[Field]) -> PolarsResult<Field> {
@@ -20,15 +102,8 @@ fn pair_struct(_input_field: &[Field]) -> PolarsResult<Field> {
 
 #[polars_expr(output_type=UInt64)]
 fn pair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
-    // Match the method string to the pairing method, otherwise return an error
-    let method = match kwargs.method.to_ascii_lowercase().as_str() {
-        "hagen" => "hagen",
-        "szudzik" => "szudzik",
-        "cantor" => "cantor",
-        _ => {
-            polars_bail!(InvalidOperation: "Invalid pairing method: {}", kwargs.method);
-        }
-    };
+    // Resolve the method up front so invalid names fail even on empty input
+    let method = Method::parse(&kwargs.method, "pairing")?;
     // Ensure both inputs are of integer type, otherwise return an error
     if !inputs[0].dtype().is_integer() || !inputs[1].dtype().is_integer() {
         polars_bail!(InvalidOperation: "The pairing function can only be used on integers.");
@@ -39,34 +114,19 @@ fn pair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
     // Convert the series to their unsigned 64-bit integer chunked arrays
     let left = left_series.u64()?;
     let right = right_series.u64()?;
-    // Apply the pairing function element-wise to left and right
-    // If the method is "szudzik", use the Szudzik pairing function,
-    // otherwise use the Cantor pairing function
-    let out: UInt64Chunked = arity::binary_elementwise_values(
-        left,
-        right,
-        match method {
-            "hagen" => compute_hagen_pair,
-            "szudzik" => compute_szudzik_pair,
-            "cantor" => compute_cantor_pair,
-            _ => unreachable!(),
-        },
-    );
+    // Nulls propagate without invoking the function; overflow raises an error
+    let out: UInt64Chunked = arity::try_binary_elementwise(left, right, |l, r| match (l, r) {
+        (Some(l), Some(r)) => pair_one(method, l, r).map(Some),
+        _ => Ok(None),
+    })?;
     // Return the result as a Series wrapped in Ok
     Ok(out.into_series())
 }
 
 #[polars_expr(output_type_func=pair_struct)]
 fn unpair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
-    // Match the method string to the pairing method, otherwise return an error
-    let method = match kwargs.method.to_ascii_lowercase().as_str() {
-        "hagen" => "hagen",
-        "szudzik" => "szudzik",
-        "cantor" => "cantor",
-        _ => {
-            polars_bail!(InvalidOperation: "Invalid pairing method: {}", kwargs.method);
-        }
-    };
+    // Resolve the method up front so invalid names fail even on empty input
+    let method = Method::parse(&kwargs.method, "unpairing")?;
     // Ensure the input is an integer, otherwise return an error
     if !inputs[0].dtype().is_integer() {
         polars_bail!(InvalidOperation: "The unpairing function can only be used on integers.");
@@ -76,17 +136,10 @@ fn unpair(inputs: &[Series], kwargs: PairingKwargs) -> PolarsResult<Series> {
     // Convert the series to their 64-bit integer chunked arrays
     let paired = paired_series.u64()?;
     // Apply the unpairing function element-wise to paired
-    // If the method is "szudzik", use the Szudzik unpairing function,
-    // otherwise use the Cantor unpairing function
     let unpaired: Vec<Option<(u64, u64)>> = paired
         .iter()
-        .map(|n| match method {
-            "hagen" => n.and_then(compute_hagen_unpair),
-            "szudzik" => n.and_then(compute_szudzik_unpair),
-            "cantor" => n.and_then(compute_cantor_unpair),
-            _ => unreachable!(),
-        })
-        .collect();
+        .map(|n| n.map(|p| unpair_one(method, p)).transpose())
+        .collect::<PolarsResult<_>>()?;
     // Create an iterator that takes the left value of the pair if it exists or 0 otherwise
     let left: Vec<Option<u64>> = unpaired.iter().map(|p| p.map(|(l, _)| l)).collect();
     let right: Vec<Option<u64>> = unpaired.iter().map(|p| p.map(|(_, r)| r)).collect();

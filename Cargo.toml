@@ -11,8 +11,8 @@ crate-type = ["cdylib"]
 pyo3 = { version = "0.29.3", features = ["extension-module", "abi3-py311"] }
 pyo3-polars = { version = "0.28.0", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
-polars = { version = "0.55.2", features = ["dtype-struct"], default-features = false }
-num-integer = { version = "0.1.46" }
+polars = { version = "0.55.2", default-features = false, features = ["dtype-struct"] }
+pairing-functions = "0.2.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 jemallocator = { version = "0.5", features = ["disable_initial_exec_tls"] }
