@@ -14,7 +14,7 @@ This plugin implements six pairing functions (Hagen[^1], Szudzik[^2], Cantor[^3]
 
 ## Installation
 
-`polars-pairing` can be installed from PyPI with `pip` or [`uv`](https://docs.astral.sh/uv/), or from Bioconda with [`pixi`](https://pixi.sh/), [`conda`](https://docs.conda.io/projects/conda/), or [`mamba`](https://mamba.readthedocs.io/en/latest/).
+`polars-pairing` can be installed from PyPI with `pip` or [`uv`](https://docs.astral.sh/uv/), or from [conda-forge](https://conda-forge.org/) with [`pixi`](https://pixi.sh/), [`conda`](https://docs.conda.io/projects/conda/), or [`mamba`](https://mamba.readthedocs.io/en/latest/).
 
 === "pip"
 

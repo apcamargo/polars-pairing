@@ -71,6 +71,9 @@ pygments_lang_class = true
 
 [project.markdown_extensions.pymdownx.superfences]
 
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
 [project.plugins.mkdocstrings.handlers.python]
 inventories = ["https://docs.python.org/3/objects.inv"]
 paths = ["."]
