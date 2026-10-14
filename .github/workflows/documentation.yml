@@ -1,29 +1,29 @@
-name: documentation
+name: Documentation
 on:
+  workflow_dispatch:
   push:
     branches:
-      - master
       - main
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/configure-pages@v6
       - uses: actions/checkout@v7
-      - name: Configure Git Credentials
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - uses: actions/setup-python@v7
         with:
           python-version: 3.x
-      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
-      - uses: actions/cache@v6
+      - run: pip install zensical==0.0.70 mkdocstrings-python==2.0.9
+      - run: zensical build --clean
+      - uses: actions/upload-pages-artifact@v5
         with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: .cache
-          restore-keys: |
-            mkdocs-material-
-      - run: pip install mkdocs-material mkdocstrings-python
-      - run: mkdocs gh-deploy --force
+          path: site
+      - uses: actions/deploy-pages@v5
+        id: deployment
