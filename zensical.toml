@@ -78,7 +78,6 @@ paths = ["."]
 [project.plugins.mkdocstrings.handlers.python.options]
 docstring_style = "numpy"
 filters = ["!^_"]
-force_inspection = true
 inherited_members = true
 modernize_annotations = true
 parameter_headings = false
